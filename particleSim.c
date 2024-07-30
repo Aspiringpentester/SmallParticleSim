@@ -5,6 +5,8 @@
 #include <SDL2/SDL.h>
 #include <stdbool.h>
 
+#define INITIAL_WINDOW_WIDTH 640
+#define INITIAL_WINDOW_HEIGHT 480
 
 typedef struct{
 	double xPos;
@@ -15,44 +17,45 @@ typedef struct{
 	double yAcceleration;
 	double mass;
 	double radius;
-} Circle;
+} Particle;
 
 
 typedef struct{
 	int numParticles;
-	Circle particles[2000];
+	Particle particles[2000];
 } Simulation;
 
-bool is_touching(Circle* particle1, Circle* particle2){
+bool is_touching(const Particle* particle1, const Particle* particle2){
 	double dx = particle2->xPos - particle1->xPos;
 	double dy = particle2->yPos - particle1->yPos;
-	double radical = dx * dx + dy * dy;
-	return sqrt(radical) < particle1->radius + particle2->radius;
+	double squareDistance = dx * dx + dy * dy;
+	double radiusDistance = particle1->radius + particle2->radius;
+	return squareDistance < radiusDistance * radiusDistance;
 }
 
 
 void draw_circle(SDL_Renderer* renderer, int centerX, int centerY, int radius) {
 	SDL_Point points[radius * 8 * 35 / 49];
 	int x = radius;
-    	int y = 0;
-    	int radiusError = 1 - x;
+	int y = 0;
+	int radiusError = 1 - x;
 
-    	while (x >= y) {
-        	points[0] = (SDL_Point){centerX + x, centerY + y};
-	        points[1] = (SDL_Point){centerX + y, centerY + x};
-	        points[2] = (SDL_Point){centerX - y, centerY + x};
-	        points[3] = (SDL_Point){centerX - x, centerY + y};
-	        points[4] = (SDL_Point){centerX - x, centerY - y};
-	        points[5] = (SDL_Point){centerX - y, centerY - x};
-	        points[6] = (SDL_Point){centerX + y, centerY - x};
-	        points[7] = (SDL_Point){centerX + x, centerY - y};
+	while (x >= y) {
+		points[0] = (SDL_Point){centerX + x, centerY + y};
+		points[1] = (SDL_Point){centerX + y, centerY + x};
+		points[2] = (SDL_Point){centerX - y, centerY + x};
+		points[3] = (SDL_Point){centerX - x, centerY + y};
+		points[4] = (SDL_Point){centerX - x, centerY - y};
+		points[5] = (SDL_Point){centerX - y, centerY - x};
+		points[6] = (SDL_Point){centerX + y, centerY - x};
+		points[7] = (SDL_Point){centerX + x, centerY - y};
 
-	       	y++;
-        	if (radiusError < 0) {
-	            radiusError += 2 * y + 1;
-	        } else {
-	            x--;
-	            radiusError += 2 * (y - x + 1);
+		y++;
+		if (radiusError < 0) {
+			radiusError += 2 * y + 1;
+		} else {
+			x--;
+			radiusError += 2 * (y - x + 1);
 		}
 	}
 	SDL_RenderDrawPoints(renderer, points, 8);
@@ -78,7 +81,7 @@ void render_particles(Simulation* sim, SDL_Renderer* renderer, SDL_Window* windo
 
 	//Update particle values
 	for(int i = 0; i < sim->numParticles; i++){
-		Circle* particle = &sim->particles[i];
+		Particle* particle = &sim->particles[i];
 		particle->xPos += particle->xVelocity;
 		particle->yPos += particle->yVelocity;
 		//particle->xVelocity += particle->xAcceleration;
@@ -93,7 +96,7 @@ void render_particles(Simulation* sim, SDL_Renderer* renderer, SDL_Window* windo
 
 		for(int j = 0; j < sim->numParticles; j++){
 			if(j != i){
-				Circle* tempParticle = &sim->particles[j];
+				Particle* tempParticle = &sim->particles[j];
 				if(is_touching(tempParticle, particle)){
 					double m1 = particle->mass;
 					double m2 = tempParticle->mass;
@@ -113,12 +116,10 @@ void render_particles(Simulation* sim, SDL_Renderer* renderer, SDL_Window* windo
 
 					tempParticle->xVelocity = v2XFinal;
 					tempParticle->yVelocity = v2YFinal;
-				}
-				//sim->particles[j] = tempParticle;
-			}
-		}
-		//sim->particles[i] = particle;
-	}
+				} //end inner if
+			} //end outer if
+		} //end inner for
+	}  //end outer for
 
 
 	//Draw particles
@@ -137,7 +138,7 @@ int main(){
 		return 1;
 	}
 
-	SDL_Window* window = SDL_CreateWindow("Testing", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_SHOWN);
+	SDL_Window* window = SDL_CreateWindow("Testing", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, INITIAL_WINDOW_WIDTH, INITIAL_WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
 	if(!window){
 		printf("Window failed to create");
 		SDL_Quit();
@@ -155,7 +156,7 @@ int main(){
 	SDL_Event event;
 
 	Simulation sim;
-	sim.numParticles = 750;
+	sim.numParticles = 1000;
 	init_particles(&sim);
 
 	clock_t lastTime = clock();
